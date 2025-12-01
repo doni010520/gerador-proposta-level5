@@ -1,281 +1,186 @@
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import cm
-from reportlab.lib.colors import HexColor, white, black
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY, TA_RIGHT
-from reportlab.platypus import (
-    BaseDocTemplate, 
-    PageTemplate, 
-    Frame, 
-    Paragraph, 
-    Spacer, 
-    Image, 
-    Table, 
-    TableStyle, 
-    PageBreak,
-    NextPageTemplate # <--- IMPORTANTE: Necessário para trocar o design da página
-)
-from reportlab.graphics.shapes import Drawing, Line
+import matplotlib
+matplotlib.use('Agg')  # Backend não-interativo
+
+import matplotlib.pyplot as plt
+import numpy as np
+from typing import List
 import os
-from datetime import datetime
-from app.utils.formatters import formatar_moeda_br
+import uuid
 
-class PDFGenerator:
+from app.models.proposta import ProducaoMensalModel, RetornoInvestimentoModel
+from app.utils.formatters import formatar_moeda_br, formatar_numero_br
+
+class GraficoService:
+    """Serviço para geração de gráficos da proposta com Design Level5"""
     
-    # Paleta de Cores Level5
-    COR_AZUL_ESCURO = HexColor('#1B2A41')
-    COR_TEAL = HexColor('#16A085')
-    COR_LARANJA = HexColor('#F39C12')
-    COR_CINZA = HexColor('#7F8C8D')
-    COR_CINZA_CLARO = HexColor('#ECF0F1')
+    # PALETA DE CORES
+    COR_AZUL_ESCURO = '#1B2A41'
+    COR_TEAL = '#16A085'
+    COR_LARANJA = '#F39C12'
+    COR_CINZA = '#7F8C8D'
+    COR_FUNDO = '#FFFFFF'
+    COR_VERMELHO = '#C0392B' 
     
-    def __init__(self):
-        self.styles = getSampleStyleSheet()
-        self._criar_estilos_customizados()
+    def gerar_grafico_producao(
+        self,
+        dados_producao: List[ProducaoMensalModel],
+        quantidade_modulos: int,
+        output_dir: str
+    ) -> str:
+        # Preparar dados
+        meses = []
+        geracao_total = []
+        geracao_por_placa = []
         
-        # CAMINHOS DAS IMAGENS
-        self.background_capa = 'app/assets/background_capa_full.jpg' 
-        self.logo_path = 'app/assets/logo-level5.png'
-    
-    def _criar_estilos_customizados(self):
-        # --- Estilos da Capa ---
-        self.styles.add(ParagraphStyle(
-            name='LabelClienteCapa',
-            fontSize=14,
-            textColor=self.COR_AZUL_ESCURO,
-            alignment=TA_LEFT,
-            fontName='Helvetica-Bold',
-            spaceAfter=5
-        ))
-
-        self.styles.add(ParagraphStyle(
-            name='NomeClienteCapa',
-            fontSize=24,
-            textColor=self.COR_TEAL,
-            alignment=TA_LEFT,
-            fontName='Helvetica-Bold',
-            leading=28
-        ))
-
-        # --- Estilos Gerais ---
-        self.styles.add(ParagraphStyle(
-            name='SecaoTitulo',
-            fontSize=16,
-            textColor=self.COR_AZUL_ESCURO,
-            alignment=TA_LEFT,
-            fontName='Helvetica-Bold',
-            spaceBefore=15,
-            spaceAfter=10
-        ))
-        
-        self.styles.add(ParagraphStyle(
-            name='Corpo',
-            parent=self.styles['Normal'],
-            fontSize=12,
-            textColor=HexColor('#333333'),
-            alignment=TA_JUSTIFY,
-            spaceBefore=3,
-            spaceAfter=6,
-            leading=16
-        ))
-
-    def _draw_cover(self, canvas, doc):
-        """Desenha APENAS a imagem de fundo da capa na página inteira"""
-        canvas.saveState()
-        page_width, page_height = A4
-        
-        if os.path.exists(self.background_capa):
-            canvas.drawImage(self.background_capa, 0, 0, width=page_width, height=page_height)
-        
-        canvas.restoreState()
-
-    def _draw_header_footer(self, canvas, doc):
-        """Cabeçalho e Rodapé das páginas internas"""
-        canvas.saveState()
-        page_width, page_height = A4
-        
-        # --- CABEÇALHO (Fundo Azul para logo branca) ---
-        header_height = 3.0 * cm
-        
-        # Retângulo Azul
-        canvas.setFillColor(self.COR_AZUL_ESCURO)
-        canvas.rect(0, page_height - header_height, page_width, header_height, fill=1, stroke=0)
-        
-        # Linha Laranja Decorativa
-        canvas.setFillColor(self.COR_LARANJA)
-        canvas.rect(0, page_height - header_height, page_width, 0.1*cm, fill=1, stroke=0)
-        
-        # Logo (Superior Direito)
-        if os.path.exists(self.logo_path):
-            logo_width = 3.5 * cm
-            logo_height = 1.4 * cm 
-            margin_right = 1.5 * cm
-            # Centraliza verticalmente no header azul
-            y_pos = page_height - (header_height / 2) - (logo_height / 2)
+        for item in dados_producao:
+            if isinstance(item.mes, int):
+                meses.append(str(item.mes))
+            else:
+                meses.append('MÉD')
             
-            canvas.drawImage(
-                self.logo_path, 
-                page_width - logo_width - margin_right, 
-                y_pos, 
-                width=logo_width, 
-                height=logo_height, 
-                mask='auto'
-            )
-            
-        # Texto do Cabeçalho (Esquerda)
-        canvas.setFont("Helvetica-Bold", 12)
-        canvas.setFillColor(white)
-        canvas.drawString(2 * cm, page_height - 1.8 * cm, "PROPOSTA TÉCNICA E COMERCIAL")
+            geracao_total.append(item.geracao_total)
+            # Recalculando geração por placa (estimativa simples baseada na total/qtd)
+            # Se você já tiver esse dado no model, use-o diretamente.
+            val_placa = item.geracao_total / quantidade_modulos if quantidade_modulos > 0 else 0
+            geracao_por_placa.append(val_placa)
         
-        # --- RODAPÉ ---
-        canvas.setStrokeColor(self.COR_CINZA_CLARO)
-        canvas.line(2*cm, 1.5*cm, page_width - 2*cm, 1.5*cm)
+        # Configurar figura
+        fig, ax = plt.subplots(figsize=(10, 5), dpi=150)
+        fig.patch.set_facecolor(self.COR_FUNDO)
+        ax.set_facecolor(self.COR_FUNDO)
         
-        canvas.setFont("Helvetica", 9)
-        canvas.setFillColor(self.COR_CINZA)
-        canvas.drawString(2*cm, 1*cm, "Level5 Engenharia Elétrica")
-        canvas.drawRightString(page_width - 2*cm, 1*cm, f"Página {doc.page}")
+        # Posições das barras (Duas barras lado a lado)
+        x = np.arange(len(meses))
+        width = 0.35
         
-        canvas.restoreState()
+        # Barra 1: Geração por Placa (Azul Escuro)
+        bars1 = ax.bar(x - width/2, geracao_por_placa, width, 
+                      label='Geração por Placa', color=self.COR_AZUL_ESCURO,
+                      edgecolor=self.COR_FUNDO, linewidth=0)
+        
+        # Barra 2: Geração Total (Verde Teal)
+        bars2 = ax.bar(x + width/2, geracao_total, width, 
+                      label='Geração Total Estimada', color=self.COR_TEAL,
+                      edgecolor=self.COR_FUNDO, linewidth=0)
+        
+        # Função para adicionar rótulos
+        def add_labels(bars, color):
+            for bar in bars:
+                height = bar.get_height()
+                ax.annotate(f'{int(height)}',
+                           xy=(bar.get_x() + bar.get_width() / 2, height),
+                           xytext=(0, 3),
+                           textcoords="offset points",
+                           ha='center', va='bottom',
+                           fontsize=8, fontweight='bold',
+                           color=color)
 
-    def gerar_proposta_plana(self, nome_cliente, modulos_quantidade, especificacoes_modulo, 
-                           inversores_quantidade, especificacoes_inversores, investimento_kit, 
-                           investimento_mao_de_obra, investimento_total, grafico_producao_path, 
-                           tabela_retorno_path, ano_payback, valor_payback, economia_25_anos, output_path):
+        add_labels(bars1, self.COR_AZUL_ESCURO)
+        add_labels(bars2, self.COR_AZUL_ESCURO)
         
-        doc = BaseDocTemplate(
-            output_path,
-            pagesize=A4,
-            rightMargin=2*cm,
-            leftMargin=2*cm,
-            topMargin=3.5*cm,
-            bottomMargin=2*cm
+        # Configurar eixos
+        ax.set_xticks(x)
+        ax.set_xticklabels(meses, fontsize=10, color=self.COR_AZUL_ESCURO, fontweight='bold')
+        
+        # Remover Eixo Y e ticks
+        ax.set_yticks([])
+        ax.tick_params(axis='x', length=0)
+        
+        # Remover bordas
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+            
+        # Linha base
+        ax.axhline(y=0, color=self.COR_AZUL_ESCURO, linewidth=2)
+        
+        # --- CORREÇÃO DO QUADRO BRANCO ---
+        # Colocamos a legenda ACIMA do gráfico (fora da área das barras)
+        # ncol=2 faz ela ficar horizontal
+        ax.legend(loc='lower center', bbox_to_anchor=(0.5, 1.02), 
+                 ncol=2, frameon=False, fontsize=10)
+        
+        # Título (Um pouco mais acima por causa da legenda)
+        ax.set_title('PRODUÇÃO MENSAL (kWh)', fontsize=12, fontweight='bold', 
+                    color=self.COR_AZUL_ESCURO, pad=30)
+        
+        plt.tight_layout()
+        
+        # Salvar
+        filename = f"grafico_producao_{uuid.uuid4().hex[:8]}.png"
+        filepath = os.path.join(output_dir, filename)
+        plt.savefig(filepath, dpi=150, bbox_inches='tight', facecolor=self.COR_FUNDO)
+        plt.close(fig)
+        
+        return filepath
+    
+    def gerar_tabela_retorno(
+        self,
+        dados_retorno: List[RetornoInvestimentoModel],
+        output_dir: str
+    ) -> str:
+        # Preparar dados
+        dados_tabela = []
+        for item in dados_retorno:
+            saldo_str = f"R$ {formatar_numero_br(item.saldo)}"
+            if item.saldo < 0:
+                saldo_str = f"-R$ {formatar_numero_br(abs(item.saldo))}"
+            
+            dados_tabela.append([
+                str(item.ano),
+                saldo_str,
+                f"R$ {formatar_numero_br(item.economia_anual)}"
+            ])
+        
+        # Aumentando a altura da figura para comportar a fonte maior
+        fig_height = len(dados_tabela) * 0.6 + 1.5
+        fig, ax = plt.subplots(figsize=(8, fig_height), dpi=150)
+        
+        fig.patch.set_facecolor(self.COR_FUNDO)
+        ax.axis('off')
+        
+        headers = ['ANO', 'SALDO ACUMULADO', 'ECONOMIA ANUAL']
+        
+        table = ax.table(
+            cellText=dados_tabela,
+            colLabels=headers,
+            loc='center',
+            cellLoc='center',
+            colLoc='center'
         )
         
-        frame_normal = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height - 3.5*cm, id='normal')
+        # --- CORREÇÃO DA TABELA MINÚSCULA ---
+        table.auto_set_font_size(False)
+        table.set_fontsize(12) # Fonte maior
+        table.scale(1, 2.0)    # Células mais altas
         
-        template_capa = PageTemplate(id='Capa', frames=[frame_normal], onPage=self._draw_cover)
-        template_conteudo = PageTemplate(id='Conteudo', frames=[frame_normal], onPage=self._draw_header_footer)
-        
-        doc.addPageTemplates([template_capa, template_conteudo])
-        
-        story = []
-        
-        # --- PÁGINA 1: CAPA ---
-        # Reduzido para 16cm para garantir que o nome fique na primeira página
-        story.append(Spacer(1, 16*cm)) 
-        
-        story.append(Paragraph("CLIENTE:", self.styles['LabelClienteCapa']))
-        story.append(Paragraph(nome_cliente.upper(), self.styles['NomeClienteCapa']))
-        
-        # --- TROCA DE TEMPLATE ---
-        # Isso diz ao PDF: "A próxima página deve usar o template 'Conteudo' (sem imagem de fundo)"
-        story.append(NextPageTemplate('Conteudo'))
-        story.append(PageBreak())
-        
-        # --- PÁGINA 2: APRESENTAÇÃO ---
-        story.append(Paragraph("QUEM SOMOS?", self.styles['SecaoTitulo']))
-        story.append(self._criar_linha_divisoria())
-        
-        texto_quem_somos = """Somos uma empresa especializada no segmento de engenharia elétrica, com foco no desenvolvimento de projetos elétricos e na instalação de sistemas fotovoltaicos. Desde 2019, temos trabalhado para oferecer soluções eficientes e sustentáveis, sempre com alto padrão de qualidade. Ao longo de nossa trajetória, já realizamos mais de 700 projetos fotovoltaicos, contribuindo para a geração de energia limpa e a redução de custos energéticos de nossos clientes."""
-        story.append(Paragraph(texto_quem_somos, self.styles['Corpo']))
-        
-        story.append(Paragraph("FUNCIONAMENTO DO SISTEMA", self.styles['SecaoTitulo']))
-        story.append(self._criar_linha_divisoria())
-        
-        texto_func = """O sistema fotovoltaico é composto principalmente por três componentes: painéis solares, inversor e medidor bidirecional. Os painéis captam a energia solar e a convertem em energia elétrica de corrente contínua (CC). Em seguida, o inversor transforma essa corrente contínua em corrente alternada (CA), que pode ser utilizada pelos equipamentos elétricos."""
-        story.append(Paragraph(texto_func, self.styles['Corpo']))
-
-        story.append(Paragraph("DESCRIÇÃO DOS ITENS", self.styles['SecaoTitulo']))
-        story.append(self._criar_linha_divisoria())
-        
-        story.append(Paragraph(f"• {modulos_quantidade} {especificacoes_modulo}", self.styles['Corpo']))
-        story.append(Paragraph(f"• {inversores_quantidade} Inversor(es) {especificacoes_inversores}", self.styles['Corpo']))
-        
-        story.append(Paragraph("GARANTIA", self.styles['SecaoTitulo']))
-        story.append(self._criar_linha_divisoria())
-        story.append(Paragraph("A garantia do sistema fotovoltaico é composta por:", self.styles['Corpo']))
-        
-        garantias = [
-            "<b>Módulos Fotovoltaicos:</b> Garantia de desempenho linear de 25 anos e garantia contra defeitos de fabricação de 15 anos.",
-            "<b>Inversor:</b> Garantia de 10 anos contra defeitos de fabricação.",
-            "<b>Estrutura de Fixação:</b> Garantia contra corrosão e defeitos de fabricação.",
-            "<b>Serviço de Instalação:</b> Garantia de 1 ano."
-        ]
-        for g in garantias:
-            story.append(Paragraph(f"• {g}", self.styles['Corpo']))
-
-        story.append(PageBreak())
-        
-        # --- PÁGINA 3: INVESTIMENTO ---
-        story.append(Paragraph("INVESTIMENTO", self.styles['SecaoTitulo']))
-        story.append(self._criar_linha_divisoria())
-        
-        dados_inv = [
-            ['DESCRIÇÃO', 'VALOR'],
-            ['Kit Fotovoltaico', formatar_moeda_br(investimento_kit)],
-            ['Mão de Obra e Projetos', formatar_moeda_br(investimento_mao_de_obra)],
-            ['INVESTIMENTO TOTAL', formatar_moeda_br(investimento_total)]
-        ]
-        
-        t_inv = Table(dados_inv, colWidths=[11*cm, 5*cm])
-        t_inv.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), self.COR_AZUL_ESCURO),
-            ('TEXTCOLOR', (0,0), (-1,0), white),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('ALIGN', (1,0), (-1,-1), 'RIGHT'),
+        # Estilização
+        for (row, col), cell in table.get_celld().items():
+            cell.set_edgecolor('#ECF0F1')
+            cell.set_linewidth(1)
             
-            ('BACKGROUND', (0,-1), (-1,-1), self.COR_AZUL_ESCURO),
-            ('TEXTCOLOR', (0,-1), (-1,-1), white),
-            ('FONTNAME', (0,-1), (-1,-1), 'Helvetica-Bold'),
-            
-            ('ROWBACKGROUNDS', (1,1), (-1,-2), [white, self.COR_CINZA_CLARO]),
-            ('FONTSIZE', (0,0), (-1,-1), 10),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 12),
-            ('TOPPADDING', (0,0), (-1,-1), 12),
-        ]))
-        story.append(t_inv)
-        
-        story.append(Spacer(1, 0.5*cm))
-        
-        story.append(Paragraph("FORMAS DE PAGAMENTO", self.styles['SecaoTitulo']))
-        story.append(self._criar_linha_divisoria())
-        story.append(Paragraph("Oferecemos diversas formas de pagamento:", self.styles['Corpo']))
-        
-        pagamentos = [
-            "<b>Pagamento à Vista:</b> Desconto especial.",
-            "<b>Financiamento Bancário:</b> Até 120 meses.",
-            "<b>Pagamento Parcelado:</b> Direto no cartão."
-        ]
-        for p in pagamentos:
-            story.append(Paragraph(f"• {p}", self.styles['Corpo']))
+            if row == 0:
+                cell.set_facecolor(self.COR_AZUL_ESCURO)
+                cell.set_text_props(color='white', weight='bold')
+                cell.set_height(0.08)
+            else:
+                if row % 2 == 0:
+                    cell.set_facecolor('#F8F9FA')
+                else:
+                    cell.set_facecolor(self.COR_FUNDO)
+                
+                cell.set_text_props(color='#333333')
+                
+                if col == 1:
+                    valor_txt = dados_tabela[row-1][1]
+                    if '-' in valor_txt:
+                        cell.set_text_props(color=self.COR_VERMELHO, weight='bold')
+                    else:
+                        cell.set_text_props(color=self.COR_TEAL, weight='bold')
 
-        story.append(PageBreak())
+        filename = f"tabela_retorno_{uuid.uuid4().hex[:8]}.png"
+        filepath = os.path.join(output_dir, filename)
+        # bbox_inches='tight' remove as bordas brancas excessivas
+        plt.savefig(filepath, dpi=150, bbox_inches='tight', pad_inches=0.1)
+        plt.close(fig)
         
-        # --- PÁGINA 4: GRÁFICOS ---
-        story.append(Paragraph("CUSTO X BENEFÍCIO", self.styles['SecaoTitulo']))
-        story.append(self._criar_linha_divisoria())
-        
-        if os.path.exists(grafico_producao_path):
-            story.append(Image(grafico_producao_path, width=16*cm, height=8*cm))
-            
-        story.append(Spacer(1, 1*cm))
-        
-        story.append(Paragraph("RETORNO DO INVESTIMENTO", self.styles['SecaoTitulo']))
-        story.append(self._criar_linha_divisoria())
-        
-        if ano_payback:
-            story.append(Paragraph(f"Retorno acumulado a partir do <b>{ano_payback}º ano</b>", self.styles['Corpo']))
-            story.append(Paragraph(f"Economia acumulada em 25 anos: <b>{formatar_moeda_br(economia_25_anos)}</b>", 
-                                   ParagraphStyle('Highlight', parent=self.styles['Corpo'], textColor=self.COR_TEAL, fontSize=14)))
-        
-        if os.path.exists(tabela_retorno_path):
-            story.append(Spacer(1, 0.5*cm))
-            story.append(Image(tabela_retorno_path, width=16*cm, height=12*cm))
-
-        doc.build(story)
-
-    def _criar_linha_divisoria(self):
-        d = Drawing(400, 5)
-        d.add(Line(0, 0, 460, 0, strokeColor=self.COR_LARANJA, strokeWidth=2))
-        return d
+        return filepath
