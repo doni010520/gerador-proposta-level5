@@ -23,6 +23,7 @@ from app.utils.formatters import formatar_moeda_br
 
 class PDFGenerator:
     
+    # Paleta de Cores Level5
     COR_AZUL_ESCURO = HexColor('#1B2A41')
     COR_TEAL = HexColor('#16A085')
     COR_LARANJA = HexColor('#F39C12')
@@ -33,10 +34,12 @@ class PDFGenerator:
         self.styles = getSampleStyleSheet()
         self._criar_estilos_customizados()
         
+        # CAMINHOS DAS IMAGENS
         self.background_capa = 'app/assets/background_capa_full.jpg' 
         self.logo_path = 'app/assets/logo-level5.png'
     
     def _criar_estilos_customizados(self):
+        # --- Estilos da Capa ---
         self.styles.add(ParagraphStyle(
             name='LabelClienteCapa',
             fontSize=14,
@@ -55,6 +58,7 @@ class PDFGenerator:
             leading=28
         ))
 
+        # --- Estilos Gerais ---
         self.styles.add(ParagraphStyle(
             name='SecaoTitulo',
             fontSize=16,
@@ -77,36 +81,76 @@ class PDFGenerator:
         ))
 
     def _draw_cover(self, canvas, doc):
+        """Desenha APENAS a imagem de fundo da capa na página inteira"""
         canvas.saveState()
         page_width, page_height = A4
+        
         if os.path.exists(self.background_capa):
             canvas.drawImage(self.background_capa, 0, 0, width=page_width, height=page_height)
+        
         canvas.restoreState()
 
     def _draw_header_footer(self, canvas, doc):
+        """Cabeçalho e Rodapé das páginas internas"""
         canvas.saveState()
         page_width, page_height = A4
         
+        # --- CABEÇALHO (Fundo Azul para logo branca) ---
         header_height = 3.0 * cm
+        
+        # Retângulo Azul
         canvas.setFillColor(self.COR_AZUL_ESCURO)
         canvas.rect(0, page_height - header_height, page_width, header_height, fill=1, stroke=0)
         
+        # Linha Laranja Decorativa
         canvas.setFillColor(self.COR_LARANJA)
         canvas.rect(0, page_height - header_height, page_width, 0.1*cm, fill=1, stroke=0)
         
+        # Logo (Superior Direito)
         if os.path.exists(self.logo_path):
-            logo_width = 5.0 * cm
-            logo_height = 1.8 * cm 
+            # Dimensões MÁXIMAS permitidas (Box)
+            max_width = 5.0 * cm
+            max_height = 1.8 * cm 
             margin_right = 1.0 * cm
-            y_pos = page_height - (header_height / 2) - (logo_height / 2)
-            canvas.drawImage(self.logo_path, page_width - logo_width - margin_right, y_pos, width=logo_width, height=logo_height, mask='auto')
             
+            # Calcular proporção para não achatar
+            try:
+                with PILImage.open(self.logo_path) as img:
+                    img_w, img_h = img.size
+                    aspect = img_w / float(img_h)
+            except:
+                aspect = 1 # Fallback se falhar
+            
+            # Tenta encaixar pela altura máxima
+            draw_height = max_height
+            draw_width = draw_height * aspect
+            
+            # Se a largura ultrapassar o máximo, encaixa pela largura
+            if draw_width > max_width:
+                draw_width = max_width
+                draw_height = draw_width / aspect
+
+            # Centraliza verticalmente no header azul
+            y_pos = page_height - (header_height / 2) - (draw_height / 2)
+            
+            canvas.drawImage(
+                self.logo_path, 
+                page_width - draw_width - margin_right, 
+                y_pos, 
+                width=draw_width, 
+                height=draw_height, 
+                mask='auto'
+            )
+            
+        # Texto do Cabeçalho (Esquerda)
         canvas.setFont("Helvetica-Bold", 12)
         canvas.setFillColor(white)
         canvas.drawString(2 * cm, page_height - 1.8 * cm, "PROPOSTA TÉCNICA E COMERCIAL")
         
+        # --- RODAPÉ ---
         canvas.setStrokeColor(self.COR_CINZA_CLARO)
         canvas.line(2*cm, 1.5*cm, page_width - 2*cm, 1.5*cm)
+        
         canvas.setFont("Helvetica", 9)
         canvas.setFillColor(self.COR_CINZA)
         canvas.drawString(2*cm, 1*cm, "Level5 Engenharia Elétrica")
@@ -129,17 +173,22 @@ class PDFGenerator:
                            investimento_mao_de_obra, investimento_total, grafico_producao_path, 
                            tabela_retorno_path, ano_payback, valor_payback, economia_25_anos, output_path):
         
+        # Configuração do Documento
         doc = BaseDocTemplate(
             output_path,
             pagesize=A4,
             rightMargin=2*cm,
             leftMargin=2*cm,
-            topMargin=3.5*cm,
+            # topMargin já define onde o texto começa. 3.5cm é suficiente (3cm de header + 0.5cm de respiro)
+            topMargin=3.5*cm, 
             bottomMargin=2*cm
         )
         
-        frame_normal = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height - 3.5*cm, id='normal')
+        # CORREÇÃO: O frame agora usa doc.height completo.
+        # Antes estava 'doc.height - 3.5*cm', o que empurrava o texto +3.5cm para baixo.
+        frame_normal = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id='normal')
         
+        # Templates de Página
         template_capa = PageTemplate(id='Capa', frames=[frame_normal], onPage=self._draw_cover)
         template_conteudo = PageTemplate(id='Conteudo', frames=[frame_normal], onPage=self._draw_header_footer)
         
@@ -149,8 +198,10 @@ class PDFGenerator:
         
         # --- PÁGINA 1: CAPA ---
         story.append(Spacer(1, 16*cm)) 
+        
         story.append(Paragraph("CLIENTE:", self.styles['LabelClienteCapa']))
         story.append(Paragraph(nome_cliente.upper(), self.styles['NomeClienteCapa']))
+        
         story.append(NextPageTemplate('Conteudo'))
         story.append(PageBreak())
         
@@ -231,6 +282,7 @@ class PDFGenerator:
 
         story.append(Spacer(1, 0.5*cm))
 
+        # --- SEÇÃO DIFERENCIAL ---
         story.append(Paragraph("DIFERENCIAL!", self.styles['SecaoTitulo']))
         story.append(self._criar_linha_divisoria())
         texto_diferencial = """Em parceria com a Yelum Seguradora, disponibilizamos uma excelente opção de seguro para os equipamentos do seu sistema fotovoltaico, proporcionando proteção completa e total tranquilidade. O valor do seguro varia entre 1% e 1,5% do custo total do sistema por ano e oferece cobertura para:"""
@@ -276,7 +328,7 @@ class PDFGenerator:
         story.append(Spacer(1, 0.3*cm))
 
         if os.path.exists(tabela_retorno_path):
-            # CÁLCULO PROPORCIONAL DA ALTURA (Evita distorção e o erro do ReportLab antigo)
+            # Tabela inserida com proporção preservada
             tabela_width = 16*cm
             tabela_height = self._get_image_height_for_width(tabela_retorno_path, tabela_width)
             
