@@ -39,12 +39,11 @@ class GraficoService:
                 meses.append('MÉD')
             
             geracao_total.append(item.geracao_total)
-            # Recalculando geração por placa
             val_placa = item.geracao_total / quantidade_modulos if quantidade_modulos > 0 else 0
             geracao_por_placa.append(val_placa)
         
         # Configurar figura
-        fig, ax = plt.subplots(figsize=(10, 5), dpi=300) # DPI 300 para alta qualidade
+        fig, ax = plt.subplots(figsize=(10, 5), dpi=300)
         fig.patch.set_facecolor(self.COR_FUNDO)
         ax.set_facecolor(self.COR_FUNDO)
         
@@ -70,7 +69,7 @@ class GraficoService:
                            xytext=(0, 3),
                            textcoords="offset points",
                            ha='center', va='bottom',
-                           fontsize=7, fontweight='bold', # Fonte ajustada para DPI 300
+                           fontsize=7, fontweight='bold',
                            color=color)
 
         add_labels(bars1, self.COR_AZUL_ESCURO)
@@ -79,7 +78,6 @@ class GraficoService:
         # Eixos
         ax.set_xticks(x)
         ax.set_xticklabels(meses, fontsize=9, color=self.COR_AZUL_ESCURO, fontweight='bold')
-        
         ax.set_yticks([])
         ax.tick_params(axis='x', length=0)
         
@@ -117,20 +115,22 @@ class GraficoService:
             if item.saldo < 0:
                 saldo_str = f"-R$ {formatar_numero_br(abs(item.saldo))}"
             
+            # ADICIONADO: Coluna de Economia Mensal que faltava
             dados_tabela.append([
                 str(item.ano),
                 saldo_str,
+                f"R$ {formatar_numero_br(item.economia_mensal)}",
                 f"R$ {formatar_numero_br(item.economia_anual)}"
             ])
         
-        # Altura dinâmica calculada
+        # Aumentada a largura para 10 polegadas para caber as 4 colunas confortavelmente
         fig_height = len(dados_tabela) * 0.4 + 1.2
-        fig, ax = plt.subplots(figsize=(8, fig_height), dpi=300) # DPI 300
+        fig, ax = plt.subplots(figsize=(10, fig_height), dpi=300)
         
         fig.patch.set_facecolor(self.COR_FUNDO)
         ax.axis('off')
         
-        headers = ['ANO', 'SALDO ACUMULADO', 'ECONOMIA ANUAL']
+        headers = ['ANO', 'SALDO ACUMULADO', 'ECONOMIA MÉDIA MENSAL', 'ECONOMIA ANUAL']
         
         table = ax.table(
             cellText=dados_tabela,
@@ -142,8 +142,8 @@ class GraficoService:
         
         # Estilização
         table.auto_set_font_size(False)
-        table.set_fontsize(10) # Fonte 10pt (padrão documento)
-        table.scale(1, 1.8)    # Escala vertical para respiro
+        table.set_fontsize(10)
+        table.scale(1, 1.8)
         
         for (row, col), cell in table.get_celld().items():
             cell.set_edgecolor('#ECF0F1')
@@ -161,6 +161,7 @@ class GraficoService:
                 
                 cell.set_text_props(color='#333333')
                 
+                # Coluna Saldo (índice 1) com cores
                 if col == 1:
                     valor_txt = dados_tabela[row-1][1]
                     if '-' in valor_txt:
