@@ -39,26 +39,24 @@ class PDFGenerator:
         self.logo_path = 'app/assets/logo-level5.png'
     
     def _criar_estilos_customizados(self):
-        # --- Estilos da Capa ---
         self.styles.add(ParagraphStyle(
             name='LabelClienteCapa',
             fontSize=14,
             textColor=self.COR_AZUL_ESCURO,
             alignment=TA_LEFT,
             fontName='Helvetica-Bold',
-            spaceAfter=5
+            spaceAfter=2 # Reduzido para ficar perto do nome
         ))
 
         self.styles.add(ParagraphStyle(
             name='NomeClienteCapa',
-            fontSize=24,
+            fontSize=26, # Levemente maior
             textColor=self.COR_TEAL,
             alignment=TA_LEFT,
             fontName='Helvetica-Bold',
             leading=28
         ))
 
-        # --- Estilos Gerais ---
         self.styles.add(ParagraphStyle(
             name='SecaoTitulo',
             fontSize=16,
@@ -184,8 +182,7 @@ class PDFGenerator:
             bottomMargin=2*cm
         )
         
-        # CORREÇÃO: O frame agora usa doc.height completo.
-        # Antes estava 'doc.height - 3.5*cm', o que empurrava o texto +3.5cm para baixo.
+        # Frame único para o texto fluir
         frame_normal = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id='normal')
         
         # Templates de Página
@@ -197,8 +194,10 @@ class PDFGenerator:
         story = []
         
         # --- PÁGINA 1: CAPA ---
-        story.append(Spacer(1, 16*cm)) 
+        # AUMENTADO PARA 22cm para empurrar o texto bem para baixo
+        story.append(Spacer(1, 22*cm)) 
         
+        # REINSERIDO: Label "CLIENTE:"
         story.append(Paragraph("CLIENTE:", self.styles['LabelClienteCapa']))
         story.append(Paragraph(nome_cliente.upper(), self.styles['NomeClienteCapa']))
         
@@ -280,25 +279,18 @@ class PDFGenerator:
         
         story.append(Paragraph("Todas as opções são planejadas para proporcionar flexibilidade e viabilizar o investimento em energia solar de forma prática e acessível.", self.styles['Corpo']))
 
-        story.append(Spacer(1, 0.5*cm))
+        story.append(Spacer(1, 0.2*cm))
 
-        # --- SEÇÃO DIFERENCIAL ---
+        # --- SEÇÃO DIFERENCIAL (COMPACTADA) ---
         story.append(Paragraph("DIFERENCIAL!", self.styles['SecaoTitulo']))
         story.append(self._criar_linha_divisoria())
-        texto_diferencial = """Em parceria com a Yelum Seguradora, disponibilizamos uma excelente opção de seguro para os equipamentos do seu sistema fotovoltaico, proporcionando proteção completa e total tranquilidade. O valor do seguro varia entre 1% e 1,5% do custo total do sistema por ano e oferece cobertura para:"""
-        story.append(Paragraph(texto_diferencial, self.styles['Corpo']))
         
-        seguros = [
-            "Danos acidentais de origem externa;",
-            "Vendavais e chuvas de granizo;",
-            "Incêndios, quedas de raio e explosões;",
-            "Roubo ou furto."
-        ]
-        for s in seguros:
-            story.append(Paragraph(f"• {s}", self.styles['Corpo']))
-            
-        texto_dif_final = """Essa parceria reforça nosso compromisso em oferecer não apenas soluções de qualidade e eficiência, mas também a segurança necessária para o seu investimento em energia solar. Caso tenha interesse, realizamos a simulação do valor do seguro no momento do fechamento do projeto fotovoltaico e finalizamos o processo diretamente com a seguradora."""
-        story.append(Paragraph(texto_dif_final, self.styles['Corpo']))
+        texto_diferencial_compacto = """
+        Em parceria com a Yelum Seguradora, oferecemos seguro para seu sistema fotovoltaico (1% a 1,5% do valor total/ano). 
+        <b>Cobertura completa para:</b> Danos acidentais, Vendavais, Granizo, Incêndios, Raios, Explosões e Roubo/Furto.
+        Essa parceria reforça nosso compromisso com sua segurança. Realizamos a simulação e contratação diretamente no fechamento do projeto.
+        """
+        story.append(Paragraph(texto_diferencial_compacto, self.styles['Corpo']))
 
         story.append(PageBreak())
         
@@ -328,7 +320,6 @@ class PDFGenerator:
         story.append(Spacer(1, 0.3*cm))
 
         if os.path.exists(tabela_retorno_path):
-            # Tabela inserida com proporção preservada
             tabela_width = 16*cm
             tabela_height = self._get_image_height_for_width(tabela_retorno_path, tabela_width)
             
