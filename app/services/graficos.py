@@ -1,13 +1,7 @@
-"""
-Serviço de Geração de Gráficos
-Gera os gráficos de produção de energia e tabela de retorno do investimento
-"""
-
 import matplotlib
 matplotlib.use('Agg')  # Backend não-interativo
 
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 import numpy as np
 from typing import List
 import os
@@ -16,16 +10,16 @@ import uuid
 from app.models.proposta import ProducaoMensalModel, RetornoInvestimentoModel
 from app.utils.formatters import formatar_moeda_br, formatar_numero_br
 
-
 class GraficoService:
-    """Serviço para geração de gráficos da proposta"""
+    """Serviço para geração de gráficos da proposta com Design Level5"""
     
-    # Cores padrão Level5
-    COR_AZUL_ESCURO = '#2C3E50'
+    # PALETA DE CORES
+    COR_AZUL_ESCURO = '#1B2A41'
     COR_TEAL = '#16A085'
-    COR_LARANJA = '#E67E22'
+    COR_LARANJA = '#F39C12'
     COR_CINZA = '#7F8C8D'
     COR_FUNDO = '#FFFFFF'
+    COR_VERMELHO = '#C0392B' 
     
     def gerar_grafico_producao(
         self,
@@ -33,51 +27,44 @@ class GraficoService:
         quantidade_modulos: int,
         output_dir: str
     ) -> str:
-        """
-        Gera o gráfico de barras de produção de energia mensal.
-        
-        Args:
-            dados_producao: Lista com dados de produção mensal
-            quantidade_modulos: Quantidade de módulos para calcular geração por placa
-            output_dir: Diretório para salvar o gráfico
-            
-        Returns:
-            Caminho do arquivo PNG gerado
-        """
         # Preparar dados
         meses = []
         geracao_total = []
         geracao_por_placa = []
         
         for item in dados_producao:
-            # Converter mês para label
             if isinstance(item.mes, int):
                 meses.append(str(item.mes))
             else:
-                meses.append('MÉDIA')
+                meses.append('MÉD')
             
             geracao_total.append(item.geracao_total)
-            geracao_por_placa.append(round(item.geracao_total / quantidade_modulos, 0))
+            # Recalculando geração por placa (estimativa simples baseada na total/qtd)
+            # Se você já tiver esse dado no model, use-o diretamente.
+            val_placa = item.geracao_total / quantidade_modulos if quantidade_modulos > 0 else 0
+            geracao_por_placa.append(val_placa)
         
         # Configurar figura
-        fig, ax = plt.subplots(figsize=(12, 6), dpi=150)
+        fig, ax = plt.subplots(figsize=(10, 5), dpi=150)
         fig.patch.set_facecolor(self.COR_FUNDO)
         ax.set_facecolor(self.COR_FUNDO)
         
-        # Posições das barras
+        # Posições das barras (Duas barras lado a lado)
         x = np.arange(len(meses))
         width = 0.35
         
-        # Criar barras
+        # Barra 1: Geração por Placa (Azul Escuro)
         bars1 = ax.bar(x - width/2, geracao_por_placa, width, 
-                       label='geração por placa', color=self.COR_AZUL_ESCURO,
-                       edgecolor='white', linewidth=0.5)
-        bars2 = ax.bar(x + width/2, geracao_total, width,
-                       label='geração total estimada', color=self.COR_TEAL,
-                       edgecolor='white', linewidth=0.5)
+                      label='Geração por Placa', color=self.COR_AZUL_ESCURO,
+                      edgecolor=self.COR_FUNDO, linewidth=0)
         
-        # Adicionar rótulos nas barras
-        def add_labels(bars, fontsize=7):
+        # Barra 2: Geração Total (Verde Teal)
+        bars2 = ax.bar(x + width/2, geracao_total, width, 
+                      label='Geração Total Estimada', color=self.COR_TEAL,
+                      edgecolor=self.COR_FUNDO, linewidth=0)
+        
+        # Função para adicionar rótulos
+        def add_labels(bars, color):
             for bar in bars:
                 height = bar.get_height()
                 ax.annotate(f'{int(height)}',
@@ -85,45 +72,42 @@ class GraficoService:
                            xytext=(0, 3),
                            textcoords="offset points",
                            ha='center', va='bottom',
-                           fontsize=fontsize, fontweight='bold',
-                           color=self.COR_AZUL_ESCURO)
-        
-        add_labels(bars1, fontsize=7)
-        add_labels(bars2, fontsize=7)
+                           fontsize=8, fontweight='bold',
+                           color=color)
+
+        add_labels(bars1, self.COR_AZUL_ESCURO)
+        add_labels(bars2, self.COR_AZUL_ESCURO)
         
         # Configurar eixos
-        ax.set_xlabel('MÊS', fontsize=10, fontweight='bold', color=self.COR_AZUL_ESCURO)
-        ax.set_ylabel('GERAÇÃO', fontsize=10, fontweight='bold', color=self.COR_AZUL_ESCURO)
         ax.set_xticks(x)
-        ax.set_xticklabels(meses, fontsize=9)
+        ax.set_xticklabels(meses, fontsize=10, color=self.COR_AZUL_ESCURO, fontweight='bold')
         
-        # Título
-        ax.set_title('PRODUÇÃO DE ENERGIA', fontsize=14, fontweight='bold', 
-                    color=self.COR_AZUL_ESCURO, pad=20)
-        
-        # Legenda
-        legend = ax.legend(loc='upper right', frameon=True, fontsize=9)
-        legend.get_frame().set_facecolor(self.COR_FUNDO)
-        legend.get_frame().set_edgecolor(self.COR_CINZA)
-        
-        # Grid suave
-        ax.yaxis.grid(True, linestyle='--', alpha=0.3, color=self.COR_CINZA)
-        ax.set_axisbelow(True)
+        # Remover Eixo Y e ticks
+        ax.set_yticks([])
+        ax.tick_params(axis='x', length=0)
         
         # Remover bordas
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        ax.spines['left'].set_color(self.COR_CINZA)
-        ax.spines['bottom'].set_color(self.COR_CINZA)
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+            
+        # Linha base
+        ax.axhline(y=0, color=self.COR_AZUL_ESCURO, linewidth=2)
         
-        # Ajustar layout
+        # --- CORREÇÃO DA LEGENDA ---
+        # Movida para a parte INFERIOR (bottom) para evitar overlap
+        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), 
+                 ncol=2, frameon=False, fontsize=10)
+        
+        # Título
+        ax.set_title('PRODUÇÃO MENSAL (kWh)', fontsize=12, fontweight='bold', 
+                    color=self.COR_AZUL_ESCURO, pad=20)
+        
         plt.tight_layout()
         
         # Salvar
         filename = f"grafico_producao_{uuid.uuid4().hex[:8]}.png"
         filepath = os.path.join(output_dir, filename)
-        plt.savefig(filepath, dpi=150, bbox_inches='tight', 
-                   facecolor=self.COR_FUNDO, edgecolor='none')
+        plt.savefig(filepath, dpi=150, bbox_inches='tight', facecolor=self.COR_FUNDO)
         plt.close(fig)
         
         return filepath
@@ -133,96 +117,69 @@ class GraficoService:
         dados_retorno: List[RetornoInvestimentoModel],
         output_dir: str
     ) -> str:
-        """
-        Gera a tabela de retorno do investimento como imagem.
-        
-        Args:
-            dados_retorno: Lista com dados de retorno por ano
-            output_dir: Diretório para salvar a imagem
-            
-        Returns:
-            Caminho do arquivo PNG gerado
-        """
-        # Preparar dados para a tabela
+        # Preparar dados
         dados_tabela = []
         for item in dados_retorno:
-            # Formatar saldo com sinal
+            saldo_str = f"R$ {formatar_numero_br(item.saldo)}"
             if item.saldo < 0:
-                saldo_str = f"-R$  {formatar_numero_br(abs(item.saldo))}"
-            else:
-                saldo_str = f"R$  {formatar_numero_br(item.saldo)}"
+                saldo_str = f"-R$ {formatar_numero_br(abs(item.saldo))}"
             
             dados_tabela.append([
                 str(item.ano),
                 saldo_str,
-                f"R$  {formatar_numero_br(item.economia_mensal)}",
-                f"R$  {formatar_numero_br(item.economia_anual)}"
+                f"R$ {formatar_numero_br(item.economia_anual)}"
             ])
         
-        # Configurar figura
-        fig, ax = plt.subplots(figsize=(10, 12), dpi=150)
+        # Aumentando a altura da figura para comportar a fonte maior
+        fig_height = len(dados_tabela) * 0.6 + 1.5
+        fig, ax = plt.subplots(figsize=(8, fig_height), dpi=150)
+        
         fig.patch.set_facecolor(self.COR_FUNDO)
-        ax.set_facecolor(self.COR_FUNDO)
         ax.axis('off')
         
-        # Cabeçalhos
-        headers = ['ANO', 'SALDO', 'ECONOMIA MÉDIA MENSAL', 'ECONOMIA ANUAL']
+        headers = ['ANO', 'SALDO ACUMULADO', 'ECONOMIA ANUAL']
         
-        # Cores das células
-        cell_colors = []
-        for i, row in enumerate(dados_tabela):
-            if i == 0:  # Primeira linha após header
-                cell_colors.append([self.COR_FUNDO] * 4)
-            else:
-                cell_colors.append([self.COR_FUNDO] * 4)
-        
-        # Criar tabela
         table = ax.table(
             cellText=dados_tabela,
             colLabels=headers,
-            cellLoc='center',
             loc='center',
-            colColours=[self.COR_CINZA] * 4,
-            cellColours=cell_colors
+            cellLoc='center',
+            colLoc='center'
         )
         
-        # Estilizar tabela
+        # --- CORREÇÃO DA TABELA MINÚSCULA ---
         table.auto_set_font_size(False)
-        table.set_fontsize(8)
-        table.scale(1.2, 1.5)
+        table.set_fontsize(12) # Fonte maior
+        table.scale(1, 2.0)    # Células mais altas
         
-        # Estilizar células
+        # Estilização
         for (row, col), cell in table.get_celld().items():
-            cell.set_edgecolor(self.COR_CINZA)
-            cell.set_linewidth(0.5)
+            cell.set_edgecolor('#ECF0F1')
+            cell.set_linewidth(1)
             
-            if row == 0:  # Header
-                cell.set_text_props(fontweight='bold', color='white')
+            if row == 0:
                 cell.set_facecolor(self.COR_AZUL_ESCURO)
+                cell.set_text_props(color='white', weight='bold')
+                cell.set_height(0.08)
             else:
-                # Alternar cores das linhas
                 if row % 2 == 0:
                     cell.set_facecolor('#F8F9FA')
                 else:
                     cell.set_facecolor(self.COR_FUNDO)
                 
-                # Destacar valores negativos/positivos na coluna SALDO
-                if col == 1:  # Coluna SALDO
-                    cell_text = dados_tabela[row-1][1]
-                    if cell_text.startswith('-'):
-                        cell.set_text_props(color='#C0392B')  # Vermelho para negativo
+                cell.set_text_props(color='#333333')
+                
+                if col == 1:
+                    valor_txt = dados_tabela[row-1][1]
+                    if '-' in valor_txt:
+                        cell.set_text_props(color=self.COR_VERMELHO, weight='bold')
                     else:
-                        cell.set_text_props(color=self.COR_TEAL)  # Verde para positivo
-        
-        # Ajustar largura das colunas
-        table.auto_set_column_width([0, 1, 2, 3])
-        
-        # Salvar
+                        cell.set_text_props(color=self.COR_TEAL, weight='bold')
+
         filename = f"tabela_retorno_{uuid.uuid4().hex[:8]}.png"
         filepath = os.path.join(output_dir, filename)
-        plt.savefig(filepath, dpi=150, bbox_inches='tight',
-                   facecolor=self.COR_FUNDO, edgecolor='none',
-                   pad_inches=0.1)
+        # bbox_inches='tight' remove as bordas brancas excessivas
+        plt.savefig(filepath, dpi=150, bbox_inches='tight', pad_inches=0.1)
         plt.close(fig)
         
         return filepath
