@@ -24,7 +24,7 @@ from app.utils.formatters import formatar_moeda_br
 class PDFGenerator:
     
     # Paleta de Cores Level5
-    COR_AZUL_ESCURO = HexColor('#1B2A41')
+    COR_AZUL_ESCURO = HexColor('#336777')
     COR_TEAL = HexColor('#16A085')
     COR_LARANJA = HexColor('#F39C12')
     COR_CINZA = HexColor('#7F8C8D')
