@@ -17,12 +17,12 @@ from reportlab.platypus import (
 )
 from reportlab.graphics.shapes import Drawing, Line
 import os
-from datetime import datetime
+from PIL import Image as PILImage # Necessário para ler dimensões da imagem
+
 from app.utils.formatters import formatar_moeda_br
 
 class PDFGenerator:
     
-    # Paleta de Cores Level5
     COR_AZUL_ESCURO = HexColor('#1B2A41')
     COR_TEAL = HexColor('#16A085')
     COR_LARANJA = HexColor('#F39C12')
@@ -33,16 +33,10 @@ class PDFGenerator:
         self.styles = getSampleStyleSheet()
         self._criar_estilos_customizados()
         
-        # CAMINHOS DAS IMAGENS
-        # 'background_capa_full.jpg': Imagem da capa JÁ com títulos e logo grande.
-        # A parte inferior (branca) deve estar limpa para receber o nome do cliente.
         self.background_capa = 'app/assets/background_capa_full.jpg' 
-        
-        # 'logo-level5.png': Logo branca/transparente para o cabeçalho das páginas internas.
         self.logo_path = 'app/assets/logo-level5.png'
     
     def _criar_estilos_customizados(self):
-        # --- Estilos da Capa ---
         self.styles.add(ParagraphStyle(
             name='LabelClienteCapa',
             fontSize=14,
@@ -61,7 +55,6 @@ class PDFGenerator:
             leading=28
         ))
 
-        # --- Estilos Gerais ---
         self.styles.add(ParagraphStyle(
             name='SecaoTitulo',
             fontSize=16,
@@ -84,65 +77,52 @@ class PDFGenerator:
         ))
 
     def _draw_cover(self, canvas, doc):
-        """Desenha APENAS a imagem de fundo da capa na página inteira"""
         canvas.saveState()
         page_width, page_height = A4
-        
         if os.path.exists(self.background_capa):
             canvas.drawImage(self.background_capa, 0, 0, width=page_width, height=page_height)
-        
         canvas.restoreState()
 
     def _draw_header_footer(self, canvas, doc):
-        """Cabeçalho e Rodapé das páginas internas"""
         canvas.saveState()
         page_width, page_height = A4
         
-        # --- CABEÇALHO (Fundo Azul para logo branca) ---
         header_height = 3.0 * cm
-        
-        # Retângulo Azul
         canvas.setFillColor(self.COR_AZUL_ESCURO)
         canvas.rect(0, page_height - header_height, page_width, header_height, fill=1, stroke=0)
         
-        # Linha Laranja Decorativa
         canvas.setFillColor(self.COR_LARANJA)
         canvas.rect(0, page_height - header_height, page_width, 0.1*cm, fill=1, stroke=0)
         
-        # Logo (Superior Direito)
         if os.path.exists(self.logo_path):
-            # Logo grande (5.0cm) para destaque no cabeçalho
             logo_width = 5.0 * cm
             logo_height = 1.8 * cm 
             margin_right = 1.0 * cm
-            
-            # Centraliza verticalmente no header azul
             y_pos = page_height - (header_height / 2) - (logo_height / 2)
+            canvas.drawImage(self.logo_path, page_width - logo_width - margin_right, y_pos, width=logo_width, height=logo_height, mask='auto')
             
-            canvas.drawImage(
-                self.logo_path, 
-                page_width - logo_width - margin_right, 
-                y_pos, 
-                width=logo_width, 
-                height=logo_height, 
-                mask='auto'
-            )
-            
-        # Texto do Cabeçalho (Esquerda)
         canvas.setFont("Helvetica-Bold", 12)
         canvas.setFillColor(white)
         canvas.drawString(2 * cm, page_height - 1.8 * cm, "PROPOSTA TÉCNICA E COMERCIAL")
         
-        # --- RODAPÉ ---
         canvas.setStrokeColor(self.COR_CINZA_CLARO)
         canvas.line(2*cm, 1.5*cm, page_width - 2*cm, 1.5*cm)
-        
         canvas.setFont("Helvetica", 9)
         canvas.setFillColor(self.COR_CINZA)
         canvas.drawString(2*cm, 1*cm, "Level5 Engenharia Elétrica")
         canvas.drawRightString(page_width - 2*cm, 1*cm, f"Página {doc.page}")
         
         canvas.restoreState()
+
+    def _get_image_height_for_width(self, image_path, target_width):
+        """Calcula a altura proporcional de uma imagem dada uma largura alvo"""
+        try:
+            with PILImage.open(image_path) as img:
+                width, height = img.size
+                aspect = height / float(width)
+                return target_width * aspect
+        except Exception:
+            return 10 * cm # Fallback seguro
 
     def gerar_proposta_plana(self, nome_cliente, modulos_quantidade, especificacoes_modulo, 
                            inversores_quantidade, especificacoes_inversores, investimento_kit, 
@@ -251,7 +231,6 @@ class PDFGenerator:
 
         story.append(Spacer(1, 0.5*cm))
 
-        # --- SEÇÃO DIFERENCIAL ---
         story.append(Paragraph("DIFERENCIAL!", self.styles['SecaoTitulo']))
         story.append(self._criar_linha_divisoria())
         texto_diferencial = """Em parceria com a Yelum Seguradora, disponibilizamos uma excelente opção de seguro para os equipamentos do seu sistema fotovoltaico, proporcionando proteção completa e total tranquilidade. O valor do seguro varia entre 1% e 1,5% do custo total do sistema por ano e oferece cobertura para:"""
@@ -297,8 +276,11 @@ class PDFGenerator:
         story.append(Spacer(1, 0.3*cm))
 
         if os.path.exists(tabela_retorno_path):
-            # Tabela inserida com proporção preservada para evitar distorção
-            img_tabela = Image(tabela_retorno_path, width=16*cm, height=18*cm, preserveAspectRatio=True)
+            # CÁLCULO PROPORCIONAL DA ALTURA (Evita distorção e o erro do ReportLab antigo)
+            tabela_width = 16*cm
+            tabela_height = self._get_image_height_for_width(tabela_retorno_path, tabela_width)
+            
+            img_tabela = Image(tabela_retorno_path, width=tabela_width, height=tabela_height)
             img_tabela.hAlign = 'CENTER'
             story.append(img_tabela)
 
