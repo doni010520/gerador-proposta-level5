@@ -12,7 +12,8 @@ from reportlab.platypus import (
     Image, 
     Table, 
     TableStyle, 
-    PageBreak
+    PageBreak,
+    NextPageTemplate # <--- IMPORTANTE: Necessário para trocar o design da página
 )
 from reportlab.graphics.shapes import Drawing, Line
 import os
@@ -33,11 +34,7 @@ class PDFGenerator:
         self._criar_estilos_customizados()
         
         # CAMINHOS DAS IMAGENS
-        # 'background_capa_full.jpg': Imagem da capa JÁ com títulos ("PROPOSTA COMERCIAL") e logo grande.
-        # A parte inferior (branca) deve estar limpa na imagem para receber o nome do cliente via código.
         self.background_capa = 'app/assets/background_capa_full.jpg' 
-        
-        # 'logo-level5.png': Logo branca/transparente para o cabeçalho das páginas internas.
         self.logo_path = 'app/assets/logo-level5.png'
     
     def _criar_estilos_customizados(self):
@@ -63,7 +60,7 @@ class PDFGenerator:
         # --- Estilos Gerais ---
         self.styles.add(ParagraphStyle(
             name='SecaoTitulo',
-            fontSize=16, # Tamanho aumentado
+            fontSize=16,
             textColor=self.COR_AZUL_ESCURO,
             alignment=TA_LEFT,
             fontName='Helvetica-Bold',
@@ -74,7 +71,7 @@ class PDFGenerator:
         self.styles.add(ParagraphStyle(
             name='Corpo',
             parent=self.styles['Normal'],
-            fontSize=12, # Tamanho aumentado
+            fontSize=12,
             textColor=HexColor('#333333'),
             alignment=TA_JUSTIFY,
             spaceBefore=3,
@@ -146,20 +143,17 @@ class PDFGenerator:
                            investimento_mao_de_obra, investimento_total, grafico_producao_path, 
                            tabela_retorno_path, ano_payback, valor_payback, economia_25_anos, output_path):
         
-        # Configuração do Documento
         doc = BaseDocTemplate(
             output_path,
             pagesize=A4,
             rightMargin=2*cm,
             leftMargin=2*cm,
-            topMargin=3.5*cm, # Margem maior por conta do cabeçalho
+            topMargin=3.5*cm,
             bottomMargin=2*cm
         )
         
-        # Frame único para o texto fluir
         frame_normal = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height - 3.5*cm, id='normal')
         
-        # Templates de Página
         template_capa = PageTemplate(id='Capa', frames=[frame_normal], onPage=self._draw_cover)
         template_conteudo = PageTemplate(id='Conteudo', frames=[frame_normal], onPage=self._draw_header_footer)
         
@@ -168,14 +162,15 @@ class PDFGenerator:
         story = []
         
         # --- PÁGINA 1: CAPA ---
-        # Spacer para empurrar o texto para a parte inferior (branca) da imagem
-        # Se o texto ficar muito alto ou baixo, ajuste este valor (20*cm)
-        story.append(Spacer(1, 20*cm)) 
+        # Reduzido para 16cm para garantir que o nome fique na primeira página
+        story.append(Spacer(1, 16*cm)) 
         
-        # Label e Nome do Cliente
         story.append(Paragraph("CLIENTE:", self.styles['LabelClienteCapa']))
         story.append(Paragraph(nome_cliente.upper(), self.styles['NomeClienteCapa']))
         
+        # --- TROCA DE TEMPLATE ---
+        # Isso diz ao PDF: "A próxima página deve usar o template 'Conteudo' (sem imagem de fundo)"
+        story.append(NextPageTemplate('Conteudo'))
         story.append(PageBreak())
         
         # --- PÁGINA 2: APRESENTAÇÃO ---
@@ -230,7 +225,6 @@ class PDFGenerator:
             ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
             ('ALIGN', (1,0), (-1,-1), 'RIGHT'),
             
-            # Linha de Total em AZUL
             ('BACKGROUND', (0,-1), (-1,-1), self.COR_AZUL_ESCURO),
             ('TEXTCOLOR', (0,-1), (-1,-1), white),
             ('FONTNAME', (0,-1), (-1,-1), 'Helvetica-Bold'),
@@ -270,7 +264,6 @@ class PDFGenerator:
         story.append(Paragraph("RETORNO DO INVESTIMENTO", self.styles['SecaoTitulo']))
         story.append(self._criar_linha_divisoria())
         
-        # Box de Destaque
         if ano_payback:
             story.append(Paragraph(f"Retorno acumulado a partir do <b>{ano_payback}º ano</b>", self.styles['Corpo']))
             story.append(Paragraph(f"Economia acumulada em 25 anos: <b>{formatar_moeda_br(economia_25_anos)}</b>", 
