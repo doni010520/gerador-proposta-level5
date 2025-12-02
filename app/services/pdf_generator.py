@@ -107,8 +107,8 @@ class PDFGenerator:
         # Logo (Superior Direito)
         if os.path.exists(self.logo_path):
             # Dimensões MÁXIMAS permitidas (Box)
-            max_width = 5.0 * cm
-            max_height = 1.8 * cm 
+            max_width = 8.0 * cm
+            max_height = 2.5 * cm 
             margin_right = 1.0 * cm
             
             # Calcular proporção para não achatar
