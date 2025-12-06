@@ -224,10 +224,10 @@ class PDFGenerator:
         story.append(self._criar_linha_divisoria())
         story.append(Paragraph("A garantia do sistema fotovoltaico é composta por:", self.styles['Corpo']))
         garantias = [
-            "<b>Módulos Fotovoltaicos:</b>Garantia de desempenho linear de 25 anos e garantia contra defeitos de fabricação de 15 anos, fornecida pelo fabricante.",
-            "<b>Inversor:</b>Garantia de 10 anos contra defeitos de fabricação, conforme especificado pelo fabricante.",
-            "<b>Estrutura de Fixação:</b>Garantia contra corrosão e defeitos de fabricação, de acordo com as especificações do fabricante.",
-            "<b>Serviço de Instalação:</b>Garantia de 1 ano, cobrindo a qualidade e a execução técnica do serviço realizado."
+            "<b>Módulos Fotovoltaicos:</b>&nbsp;Garantia de desempenho linear de 25 anos e garantia contra defeitos de fabricação de 15 anos, fornecida pelo fabricante.",
+            "<b>Inversor:</b>&nbsp;Garantia de 10 anos contra defeitos de fabricação, conforme especificado pelo fabricante.",
+            "<b>Estrutura de Fixação:</b>&nbsp;Garantia contra corrosão e defeitos de fabricação, de acordo com as especificações do fabricante.",
+            "<b>Serviço de Instalação:</b>&nbsp;Garantia de 1 ano, cobrindo a qualidade e a execução técnica do serviço realizado."
         ]
         for g in garantias:
             story.append(Paragraph(f"• {g}", self.styles['CorpoBullet']))
@@ -268,9 +268,9 @@ class PDFGenerator:
         story.append(Paragraph("Oferecemos diversas formas de pagamento para facilitar a aquisição do seu sistema fotovoltaico. Entre as opções disponíveis estão:", self.styles['Corpo']))
         
         pagamentos = [
-            "<b>Pagamento à Vista:</b>Desconto especial para pagamentos realizados à vista.",
-            "<b>Financiamento Bancário:</b>Parcerias com instituições financeiras que permitem financiar o sistema em até 120 meses, com condições acessíveis e taxas competitivas.",
-            "<b>Pagamento Parcelado:</b>Possibilidade de parcelamento direto no cartão."
+            "<b>Pagamento à Vista:</b>&nbsp;Desconto especial para pagamentos realizados à vista.",
+            "<b>Financiamento Bancário:</b>&nbsp;Parcerias com instituições financeiras que permitem financiar o sistema em até 120 meses, com condições acessíveis e taxas competitivas.",
+            "<b>Pagamento Parcelado:</b>&nbsp;Possibilidade de parcelamento direto no cartão."
         ]
         for p in pagamentos:
             story.append(Paragraph(f"• {p}", self.styles['CorpoBullet']))
@@ -285,7 +285,7 @@ class PDFGenerator:
         
         texto_diferencial_compacto = """
         Em parceria com a Yelum Seguradora, oferecemos seguro para seu sistema fotovoltaico (1% a 1,5% do valor total/ano). 
-        <b>Cobertura completa para:</b> Danos acidentais, Vendavais, Granizo, Incêndios, Raios, Explosões e Roubo/Furto.
+        <b>Cobertura completa para:</b>&nbsp;Danos acidentais, Vendavais, Granizo, Incêndios, Raios, Explosões e Roubo/Furto.
         Essa parceria reforça nosso compromisso com sua segurança. Realizamos a simulação e contratação diretamente no fechamento do projeto.
         """
         story.append(Paragraph(texto_diferencial_compacto, self.styles['Corpo']))
@@ -309,8 +309,8 @@ class PDFGenerator:
         story.append(Paragraph("Uma das etapas mais importantes para avaliar o custo-benefício do sistema fotovoltaico é o cálculo do retorno sobre o investimento. Com base na tarifa atual de energia elétrica, considerando um reajuste médio ao ano, projetamos os seguintes resultados:", self.styles['Corpo']))
         
         if ano_payback:
-            story.append(Paragraph(f"• <b>Lucro a partir do {ano_payback}º ano:</b>O sistema começará a gerar um retorno acumulado de <b>{formatar_moeda_br(valor_payback)}</b>", self.styles['CorpoBullet']))
-            story.append(Paragraph(f"• <b>Retorno significativo em 25 anos:</b>Economia acumulada de <b>{formatar_moeda_br(economia_25_anos)}</b>", 
+            story.append(Paragraph(f"• <b>Lucro a partir do {ano_payback}º ano:</b>&nbsp;O sistema começará a gerar um retorno acumulado de <b>{formatar_moeda_br(valor_payback)}</b>", self.styles['CorpoBullet']))
+            story.append(Paragraph(f"• <b>Retorno significativo em 25 anos:</b>&nbsp;Economia acumulada de <b>{formatar_moeda_br(economia_25_anos)}</b>", 
                                    ParagraphStyle('Highlight', parent=self.styles['CorpoBullet'], textColor=self.COR_TEAL, fontSize=14)))
         
         story.append(Spacer(1, 0.3*cm))
