@@ -17,7 +17,7 @@ from reportlab.platypus import (
 )
 from reportlab.graphics.shapes import Drawing, Line
 import os
-from PIL import Image as PILImage # Necessário para ler dimensões da imagem
+from PIL import Image as PILImage
 
 from app.utils.formatters import formatar_moeda_br
 
@@ -45,12 +45,12 @@ class PDFGenerator:
             textColor=self.COR_AZUL_ESCURO,
             alignment=TA_LEFT,
             fontName='Helvetica-Bold',
-            spaceAfter=2 # Reduzido para ficar perto do nome
+            spaceAfter=2
         ))
 
         self.styles.add(ParagraphStyle(
             name='NomeClienteCapa',
-            fontSize=26, # Levemente maior
+            fontSize=26,
             textColor=self.COR_TEAL,
             alignment=TA_LEFT,
             fontName='Helvetica-Bold',
@@ -77,14 +77,15 @@ class PDFGenerator:
             spaceAfter=6,
             leading=16
         ))
+        
         self.styles.add(ParagraphStyle(
             name='CorpoBullet',
             parent=self.styles['Corpo'],
-            leftIndent=0.5*cm,
-            firstLineIndent=-0.5*cm,
+            leftIndent=0.6*cm,
+            firstLineIndent=-0.6*cm,
             spaceBefore=3,
             spaceAfter=3
-))
+        ))
 
     def _draw_cover(self, canvas, doc):
         """Desenha APENAS a imagem de fundo da capa na página inteira"""
@@ -114,29 +115,24 @@ class PDFGenerator:
         
         # Logo (Superior Direito)
         if os.path.exists(self.logo_path):
-            # Dimensões MÁXIMAS permitidas (Box)
             max_width = 8.0 * cm
             max_height = 2.5 * cm 
             margin_right = 1.0 * cm
             
-            # Calcular proporção para não achatar
             try:
                 with PILImage.open(self.logo_path) as img:
                     img_w, img_h = img.size
                     aspect = img_w / float(img_h)
             except:
-                aspect = 1 # Fallback se falhar
+                aspect = 1
             
-            # Tenta encaixar pela altura máxima
             draw_height = max_height
             draw_width = draw_height * aspect
             
-            # Se a largura ultrapassar o máximo, encaixa pela largura
             if draw_width > max_width:
                 draw_width = max_width
                 draw_height = draw_width / aspect
 
-            # Centraliza verticalmente no header azul
             y_pos = page_height - (header_height / 2) - (draw_height / 2)
             
             canvas.drawImage(
@@ -172,7 +168,7 @@ class PDFGenerator:
                 aspect = height / float(width)
                 return target_width * aspect
         except Exception:
-            return 10 * cm # Fallback seguro
+            return 10 * cm
 
     def gerar_proposta_plana(self, nome_cliente, modulos_quantidade, especificacoes_modulo, 
                            inversores_quantidade, especificacoes_inversores, investimento_kit, 
@@ -185,15 +181,12 @@ class PDFGenerator:
             pagesize=A4,
             rightMargin=2*cm,
             leftMargin=2*cm,
-            # topMargin já define onde o texto começa. 3.5cm é suficiente (3cm de header + 0.5cm de respiro)
             topMargin=3.5*cm, 
             bottomMargin=2*cm
         )
         
-        # Frame único para o texto fluir
         frame_normal = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id='normal')
         
-        # Templates de Página
         template_capa = PageTemplate(id='Capa', frames=[frame_normal], onPage=self._draw_cover)
         template_conteudo = PageTemplate(id='Conteudo', frames=[frame_normal], onPage=self._draw_header_footer)
         
@@ -202,10 +195,7 @@ class PDFGenerator:
         story = []
         
         # --- PÁGINA 1: CAPA ---
-        # AUMENTADO PARA 22cm para empurrar o texto bem para baixo
         story.append(Spacer(1, 22*cm)) 
-        
-        # REINSERIDO: Label "CLIENTE:"
         story.append(Paragraph("CLIENTE:", self.styles['LabelClienteCapa']))
         story.append(Paragraph(nome_cliente.upper(), self.styles['NomeClienteCapa']))
         
@@ -234,10 +224,10 @@ class PDFGenerator:
         story.append(self._criar_linha_divisoria())
         story.append(Paragraph("A garantia do sistema fotovoltaico é composta por:", self.styles['Corpo']))
         garantias = [
-            "<b>Módulos Fotovoltaicos:</b> Garantia de desempenho linear de 25 anos e garantia contra defeitos de fabricação de 15 anos, fornecida pelo fabricante.",
-            "<b>Inversor:</b> Garantia de 10 anos contra defeitos de fabricação, conforme especificado pelo fabricante.",
-            "<b>Estrutura de Fixação:</b> Garantia contra corrosão e defeitos de fabricação, de acordo com as especificações do fabricante.",
-            "<b>Serviço de Instalação:</b> Garantia de 1 ano, cobrindo a qualidade e a execução técnica do serviço realizado."
+            "<b>Módulos Fotovoltaicos:</b>Garantia de desempenho linear de 25 anos e garantia contra defeitos de fabricação de 15 anos, fornecida pelo fabricante.",
+            "<b>Inversor:</b>Garantia de 10 anos contra defeitos de fabricação, conforme especificado pelo fabricante.",
+            "<b>Estrutura de Fixação:</b>Garantia contra corrosão e defeitos de fabricação, de acordo com as especificações do fabricante.",
+            "<b>Serviço de Instalação:</b>Garantia de 1 ano, cobrindo a qualidade e a execução técnica do serviço realizado."
         ]
         for g in garantias:
             story.append(Paragraph(f"• {g}", self.styles['CorpoBullet']))
@@ -278,9 +268,9 @@ class PDFGenerator:
         story.append(Paragraph("Oferecemos diversas formas de pagamento para facilitar a aquisição do seu sistema fotovoltaico. Entre as opções disponíveis estão:", self.styles['Corpo']))
         
         pagamentos = [
-            "<b>Pagamento à Vista:</b> Desconto especial para pagamentos realizados à vista.",
-            "<b>Financiamento Bancário:</b> Parcerias com instituições financeiras que permitem financiar o sistema em até 120 meses, com condições acessíveis e taxas competitivas.",
-            "<b>Pagamento Parcelado:</b> Possibilidade de parcelamento direto no cartão."
+            "<b>Pagamento à Vista:</b>Desconto especial para pagamentos realizados à vista.",
+            "<b>Financiamento Bancário:</b>Parcerias com instituições financeiras que permitem financiar o sistema em até 120 meses, com condições acessíveis e taxas competitivas.",
+            "<b>Pagamento Parcelado:</b>Possibilidade de parcelamento direto no cartão."
         ]
         for p in pagamentos:
             story.append(Paragraph(f"• {p}", self.styles['CorpoBullet']))
@@ -319,11 +309,9 @@ class PDFGenerator:
         story.append(Paragraph("Uma das etapas mais importantes para avaliar o custo-benefício do sistema fotovoltaico é o cálculo do retorno sobre o investimento. Com base na tarifa atual de energia elétrica, considerando um reajuste médio ao ano, projetamos os seguintes resultados:", self.styles['Corpo']))
         
         if ano_payback:
-        story.append(Paragraph(f"• <b>Lucro a partir do {ano_payback}º ano:</b> O sistema começará a gerar um retorno acumulado de <b>{formatar_moeda_br(valor_payback)}</b>", self.styles['CorpoBullet']))
-        story.append(Paragraph(f"• <b>Retorno significativo em 25 anos:</b> Economia acumulada de <b>{formatar_moeda_br(economia_25_anos)}</b>", 
-                               ParagraphStyle('Highlight', parent=self.styles['CorpoBullet'], textColor=self.COR_TEAL, fontSize=14)))
-       
-        story.append(Spacer(1, 0.3*cm))
+            story.append(Paragraph(f"• <b>Lucro a partir do {ano_payback}º ano:</b>O sistema começará a gerar um retorno acumulado de <b>{formatar_moeda_br(valor_payback)}</b>", self.styles['CorpoBullet']))
+            story.append(Paragraph(f"• <b>Retorno significativo em 25 anos:</b>Economia acumulada de <b>{formatar_moeda_br(economia_25_anos)}</b>", 
+                                   ParagraphStyle('Highlight', parent=self.styles['CorpoBullet'], textColor=self.COR_TEAL, fontSize=14)))
         
         story.append(Spacer(1, 0.3*cm))
         story.append(Paragraph("Com essas premissas, o investimento no sistema fotovoltaico se mostra altamente vantajoso, garantindo economia no curto prazo e uma valorização significativa no longo prazo.", self.styles['Corpo']))
