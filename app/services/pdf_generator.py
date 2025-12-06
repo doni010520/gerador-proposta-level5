@@ -19,6 +19,7 @@ from reportlab.graphics.shapes import Drawing, Line
 import os
 from PIL import Image as PILImage
 
+# Certifique-se de que este import existe no seu projeto ou ajuste conforme necessário
 from app.utils.formatters import formatar_moeda_br
 
 class PDFGenerator:
@@ -78,11 +79,12 @@ class PDFGenerator:
             leading=16
         ))
         
+        # O bulletText usará o firstLineIndent negativo para posicionar o marcador
         self.styles.add(ParagraphStyle(
             name='CorpoBullet',
             parent=self.styles['Corpo'],
-            leftIndent=0.6*cm,
-            firstLineIndent=-0.6*cm,
+            leftIndent=0.6*cm,       # Todo o bloco de texto recuado
+            firstLineIndent=-0.6*cm, # O marcador volta para a esquerda
             spaceBefore=3,
             spaceAfter=3
         ))
@@ -217,20 +219,25 @@ class PDFGenerator:
 
         story.append(Paragraph("DESCRIÇÃO DOS ITENS:", self.styles['SecaoTitulo']))
         story.append(self._criar_linha_divisoria())
-        story.append(Paragraph(f"• {modulos_quantidade} {especificacoes_modulo}", self.styles['Corpo']))
-        story.append(Paragraph(f"• {inversores_quantidade} Inversor(es) {especificacoes_inversores}", self.styles['Corpo']))
+        
+        # CORREÇÃO AQUI: Uso de bulletText
+        story.append(Paragraph(f"{modulos_quantidade} {especificacoes_modulo}", self.styles['CorpoBullet'], bulletText='•'))
+        story.append(Paragraph(f"{inversores_quantidade} Inversor(es) {especificacoes_inversores}", self.styles['CorpoBullet'], bulletText='•'))
         
         story.append(Paragraph("GARANTIA", self.styles['SecaoTitulo']))
         story.append(self._criar_linha_divisoria())
         story.append(Paragraph("A garantia do sistema fotovoltaico é composta por:", self.styles['Corpo']))
+        
         garantias = [
             "<b>Módulos Fotovoltaicos:</b>&nbsp;Garantia de desempenho linear de 25 anos e garantia contra defeitos de fabricação de 15 anos, fornecida pelo fabricante.",
             "<b>Inversor:</b>&nbsp;Garantia de 10 anos contra defeitos de fabricação, conforme especificado pelo fabricante.",
             "<b>Estrutura de Fixação:</b>&nbsp;Garantia contra corrosão e defeitos de fabricação, de acordo com as especificações do fabricante.",
             "<b>Serviço de Instalação:</b>&nbsp;Garantia de 1 ano, cobrindo a qualidade e a execução técnica do serviço realizado."
         ]
+        
+        # CORREÇÃO AQUI: Uso de bulletText
         for g in garantias:
-            story.append(Paragraph(f"• {g}", self.styles['CorpoBullet']))
+            story.append(Paragraph(g, self.styles['CorpoBullet'], bulletText='•'))
 
         story.append(PageBreak())
         
@@ -272,8 +279,10 @@ class PDFGenerator:
             "<b>Financiamento Bancário:</b>&nbsp;Parcerias com instituições financeiras que permitem financiar o sistema em até 120 meses, com condições acessíveis e taxas competitivas.",
             "<b>Pagamento Parcelado:</b>&nbsp;Possibilidade de parcelamento direto no cartão."
         ]
+        
+        # CORREÇÃO AQUI: Uso de bulletText
         for p in pagamentos:
-            story.append(Paragraph(f"• {p}", self.styles['CorpoBullet']))
+            story.append(Paragraph(p, self.styles['CorpoBullet'], bulletText='•'))
         
         story.append(Paragraph("Todas as opções são planejadas para proporcionar flexibilidade e viabilizar o investimento em energia solar de forma prática e acessível.", self.styles['Corpo']))
 
@@ -308,10 +317,18 @@ class PDFGenerator:
         
         story.append(Paragraph("Uma das etapas mais importantes para avaliar o custo-benefício do sistema fotovoltaico é o cálculo do retorno sobre o investimento. Com base na tarifa atual de energia elétrica, considerando um reajuste médio ao ano, projetamos os seguintes resultados:", self.styles['Corpo']))
         
+        # CORREÇÃO AQUI: Uso de bulletText nos itens de retorno
         if ano_payback:
-            story.append(Paragraph(f"• <b>Lucro a partir do {ano_payback}º ano:</b>&nbsp;O sistema começará a gerar um retorno acumulado de <b>{formatar_moeda_br(valor_payback)}</b>", self.styles['CorpoBullet']))
-            story.append(Paragraph(f"• <b>Retorno significativo em 25 anos:</b>&nbsp;Economia acumulada de <b>{formatar_moeda_br(economia_25_anos)}</b>", 
-                                   ParagraphStyle('Highlight', parent=self.styles['CorpoBullet'], textColor=self.COR_TEAL, fontSize=14)))
+            # Item 1
+            texto_lucro = f"<b>Lucro a partir do {ano_payback}º ano:</b>&nbsp;O sistema começará a gerar um retorno acumulado de <b>{formatar_moeda_br(valor_payback)}</b>"
+            story.append(Paragraph(texto_lucro, self.styles['CorpoBullet'], bulletText='•'))
+            
+            # Item 2 (Highlight)
+            texto_economia = f"<b>Retorno significativo em 25 anos:</b>&nbsp;Economia acumulada de <b>{formatar_moeda_br(economia_25_anos)}</b>"
+            
+            # Criamos o estilo e passamos bulletText explicitamente
+            estilo_highlight = ParagraphStyle('Highlight', parent=self.styles['CorpoBullet'], textColor=self.COR_TEAL, fontSize=14)
+            story.append(Paragraph(texto_economia, estilo_highlight, bulletText='•'))
         
         story.append(Spacer(1, 0.3*cm))
         story.append(Paragraph("Com essas premissas, o investimento no sistema fotovoltaico se mostra altamente vantajoso, garantindo economia no curto prazo e uma valorização significativa no longo prazo.", self.styles['Corpo']))
