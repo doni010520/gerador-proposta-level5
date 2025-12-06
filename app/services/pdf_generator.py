@@ -319,10 +319,11 @@ class PDFGenerator:
         story.append(Paragraph("Uma das etapas mais importantes para avaliar o custo-benefício do sistema fotovoltaico é o cálculo do retorno sobre o investimento. Com base na tarifa atual de energia elétrica, considerando um reajuste médio ao ano, projetamos os seguintes resultados:", self.styles['Corpo']))
         
         if ano_payback:
-            story.append(Paragraph(f"• <b>Lucro a partir do {ano_payback}º ano:</b> O sistema começará a gerar um retorno acumulado de <b>{formatar_moeda_br(valor_payback)}</b>", self.styles['CorpoBullet']))
-            story.append(Paragraph(f"• <b>Retorno significativo em 25 anos:</b> Economia acumulada de <b>{formatar_moeda_br(economia_25_anos)}</b>", 
-                                   ParagraphStyle('Highlight', parent=self.styles['CorpoBullet'], textColor=self.COR_TEAL, fontSize=14)))
-                                   ParagraphStyle('Highlight', parent=self.styles['Corpo'], textColor=self.COR_TEAL, fontSize=14)))
+        story.append(Paragraph(f"• <b>Lucro a partir do {ano_payback}º ano:</b> O sistema começará a gerar um retorno acumulado de <b>{formatar_moeda_br(valor_payback)}</b>", self.styles['CorpoBullet']))
+        story.append(Paragraph(f"• <b>Retorno significativo em 25 anos:</b> Economia acumulada de <b>{formatar_moeda_br(economia_25_anos)}</b>", 
+                               ParagraphStyle('Highlight', parent=self.styles['CorpoBullet'], textColor=self.COR_TEAL, fontSize=14)))
+       
+        story.append(Spacer(1, 0.3*cm))
         
         story.append(Spacer(1, 0.3*cm))
         story.append(Paragraph("Com essas premissas, o investimento no sistema fotovoltaico se mostra altamente vantajoso, garantindo economia no curto prazo e uma valorização significativa no longo prazo.", self.styles['Corpo']))
