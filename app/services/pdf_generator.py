@@ -77,6 +77,14 @@ class PDFGenerator:
             spaceAfter=6,
             leading=16
         ))
+        self.styles.add(ParagraphStyle(
+            name='CorpoBullet',
+            parent=self.styles['Corpo'],
+            leftIndent=0.5*cm,
+            firstLineIndent=-0.5*cm,
+            spaceBefore=3,
+            spaceAfter=3
+))
 
     def _draw_cover(self, canvas, doc):
         """Desenha APENAS a imagem de fundo da capa na página inteira"""
@@ -232,7 +240,7 @@ class PDFGenerator:
             "<b>Serviço de Instalação:</b> Garantia de 1 ano, cobrindo a qualidade e a execução técnica do serviço realizado."
         ]
         for g in garantias:
-            story.append(Paragraph(f"• {g}", self.styles['Corpo']))
+            story.append(Paragraph(f"• {g}", self.styles['CorpoBullet']))
 
         story.append(PageBreak())
         
@@ -275,7 +283,7 @@ class PDFGenerator:
             "<b>Pagamento Parcelado:</b> Possibilidade de parcelamento direto no cartão."
         ]
         for p in pagamentos:
-            story.append(Paragraph(f"• {p}", self.styles['Corpo']))
+            story.append(Paragraph(f"• {p}", self.styles['CorpoBullet']))
         
         story.append(Paragraph("Todas as opções são planejadas para proporcionar flexibilidade e viabilizar o investimento em energia solar de forma prática e acessível.", self.styles['Corpo']))
 
@@ -311,8 +319,9 @@ class PDFGenerator:
         story.append(Paragraph("Uma das etapas mais importantes para avaliar o custo-benefício do sistema fotovoltaico é o cálculo do retorno sobre o investimento. Com base na tarifa atual de energia elétrica, considerando um reajuste médio ao ano, projetamos os seguintes resultados:", self.styles['Corpo']))
         
         if ano_payback:
-            story.append(Paragraph(f"• <b>Lucro a partir do {ano_payback}º ano:</b> O sistema começará a gerar um retorno acumulado de <b>{formatar_moeda_br(valor_payback)}</b>", self.styles['Corpo']))
+            story.append(Paragraph(f"• <b>Lucro a partir do {ano_payback}º ano:</b> O sistema começará a gerar um retorno acumulado de <b>{formatar_moeda_br(valor_payback)}</b>", self.styles['CorpoBullet']))
             story.append(Paragraph(f"• <b>Retorno significativo em 25 anos:</b> Economia acumulada de <b>{formatar_moeda_br(economia_25_anos)}</b>", 
+                                   ParagraphStyle('Highlight', parent=self.styles['CorpoBullet'], textColor=self.COR_TEAL, fontSize=14)))
                                    ParagraphStyle('Highlight', parent=self.styles['Corpo'], textColor=self.COR_TEAL, fontSize=14)))
         
         story.append(Spacer(1, 0.3*cm))
